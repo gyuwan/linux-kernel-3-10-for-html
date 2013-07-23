@@ -149,8 +149,8 @@
 @@   맞춰줄려고 head.s에 의미없는 instruction(mov r0, r0)를 8번(8 Word)해서 소비합니다.
 @@
 @@   참조:
-@@     - <a href="http:@@www.iamroot.org/xe/QnA/23099">http:@@www.iamroot.org/xe/QnA/23099</a>
-@@     - <a href="http:@@comments.gmane.org/gmane.linux.ports.arm.kernel/26690">http:@@comments.gmane.org/gmane.linux.ports.arm.kernel/26690</a>
+@@     - <a href="http://www.iamroot.org/xe/QnA/23099">http://www.iamroot.org/xe/QnA/23099</a>
+@@     - <a href="http://comments.gmane.org/gmane.linux.ports.arm.kernel/26690">http://comments.gmane.org/gmane.linux.ports.arm.kernel/26690</a>
 @@
 
 		.rept	7		@@.rept [N] = N번 만큼 반복인건가?? 아니면 계속 적히는건가?
@@ -211,7 +211,7 @@
 		.word	_edata			@ zImage end address
 						@@ zImage의 끝 주소
  THUMB(		.thumb			) 	@@.thumb = This performs the same action as .code 16. 
-						@@ <a href="http:@@sourceware.org/binutils/docs/as/ARM-Directives.html#ARM-Directives">http:@@sourceware.org/binutils/docs/as/ARM-Directives.html#ARM-Directives</a>
+						@@ <a href="http://sourceware.org/binutils/docs/as/ARM-Directives.html#ARM-Directives">http://sourceware.org/binutils/docs/as/ARM-Directives.html#ARM-Directives</a>
 						@@ 모르는 ASM은 위 링크 참조
 1:
 
@@ -290,12 +290,12 @@ not_angel:
 		@@link reg 에 pc를 저장하고 cache_on로jump
 		bl	<a href = "#cache_on">cache_on</a>
 <h1 id='return_cache_on'></h1>
-@@@TODO 130721까지 한곳.. 다음에 다음 줄 부터 하면 되고 다음에 할 때 이 부분을 지운다.
 restart:	adr	r0, LC0			@@ pc에서 LC0까지의 상대 주소를 r0에 저장
 		ldmia	r0, {r1, r2, r3, r6, r10, r11, r12}
 						@@ LC0 에 있는 값들을 순서대로 r1부터 r12까지 저장.
-		ldr	sp, [r0, #28]
-						@@ LC0 끝부분을 sp에 저장.
+						@@ <a href='#Go_LC0'>Go_LC0</a>
+		ldr	sp, [r0, #28]		@@ LC0 끝부분을 sp에 저장.
+						@@ user_stack_end
 
 		/*
 		 * We might be running at a different address.  We need
@@ -305,6 +305,7 @@ restart:	adr	r0, LC0			@@ pc에서 LC0까지의 상대 주소를 r0에 저장
 						@@ r0 : runtime의 LC0 address, r1 : compile time의 LC0 address
 		add	r6, r6, r0		@ _edata
 						@@ r6 : runtime의 _edata
+						@@ delta 값을 더하여서 실행 시간의 주소로 바꾼다
 		add	r10, r10, r0		@ inflated kernel size location
 						@@ r10 : runtime 의 inflated kernel size location
 
@@ -321,10 +322,37 @@ restart:	adr	r0, LC0			@@ pc에서 LC0까지의 상대 주소를 r0에 저장
 		orr	r9, r9, lr, lsl #16		@@ r9 = r9 | (lr << 16)
 		orr	r9, r9, r10, lsl #24	@@ r9 = r9 | (lr << 24)
 
+		@@ 실제값 0x0A0B0C0D
+		@@ 리틀 엔디안 메모리 저장 상태 : 0D 0C 0B 0A
+		@@ ldrb    r9, [r10, #0]
+		@@     r9 = 00 00 00 0D
+		@@ ldrb    lr, [r10, #1]
+		@@     lr =  00 00 00 0C
+		@@ orr     r9, r9, lr, lsl #8
+		@@    r9 =  00 00 0C 0D
+		@@ ldrb    lr, [r10, #2]
+		@@    lr = 00 00 00 0B
+		@@ ldrb    r10, [r10, #3]
+		@@    r10 = 00 00 00 0A
+		@@  orr     r9, r9, lr, lsl #16
+		@@    r9 = 00 0B 0C 0D
+		@@ orr     r9, r9, r10, lsl #24
+		@@    r9 = 0A 0B 0C 0D
+		
+
 #ifndef CONFIG_ZBOOT_ROM
 		/* malloc space is above the relocated stack (64k max) */
 		add	sp, sp, r0
 		add	r10, sp, #0x10000
+
+		@@ +------+
+		@@ |      |
+		@@ +------+ r10
+		@@ | 64KB |
+		@@ +------+ 현재 SP
+		@@ | 4KB  |
+		@@ +------+ 유저 스페이스 스택 영역의 마지막 주소
+		
 #else
 		/*
 		 * With ZBOOT_ROM the bss/stack is non relocatable,
@@ -356,14 +384,28 @@ restart:	adr	r0, LC0			@@ pc에서 LC0까지의 상대 주소를 r0에 저장
  */
 
 		ldr	lr, [r6, #0]		@@ lr = *(_edata) zImage의 끝의 값
+						@@ r6=_edata. 실제로는 bss의 시작 주소가 저장되어 있음
+		                        	@@ bss의 첫번째 4바이트를 읽어 lr레지스터에 저장
+						@@TODO : 첫줄은 C팀의 의견이고 나머지는 A팀의 의견이다. 어떤게 맞는건지 알아보자.
+		
 #ifndef __ARMEB__
 		ldr	r1, =0xedfe0dd0		@ sig is 0xd00dfeed big endian
 #else
-		ldr	r1, =0xd00dfeed
+						@@ dtb=device tree blob의 약자. 하드웨어 설정에 관한 정보가 들어있으며
+						@@ 커널이 빌드될때 같이 빌드되어 zImage뒤에 붙는다.
+		ldr	r1, =0xd00dfeed		@@ 0xd00dfeed는 빌드된 dtb바이너리 시작주소에 있는 매직 넘버. 커널 빌드후 
+		                        	@@ zImage와 합쳐지게 되는데 bss시작주소가 이 dtb바이너리의 시작 주소를 가리키고 있음
+						@@ 0xd00dfeed값은 exynos dtb 파일 hexdump 명령으로 값이 들어있음 확인함
+		
 #endif
 		@@ DTB를 사용하면 위 값이 zImage의 끝에 넣어져 있다.
-		cmp	lr, r1
+		cmp	lr, r1		@@A zImage 뒤에 dtb바이너리가 붙어있으면
+		                        @@A 아래 브랜치 실행하지 않음.
+		
 		bne	dtb_check_done		@ not found
+						@@A dtb안쓰면 점프
+						@@A 요즘 추세는 dtb를 대부분 사용한다.
+		
 
 #ifdef CONFIG_ARM_ATAG_DTB_COMPAT
 		/*
@@ -375,7 +417,26 @@ restart:	adr	r0, LC0			@@ pc에서 LC0까지의 상대 주소를 r0에 저장
 		 * area.  No GOT fixup has occurred yet, but none of the
 		 * code we're about to call uses any global variable.
 		*/
+
+	@@ +------+
+        @@ |      |
+        @@ +------+ r10
+        @@ |64KB  |
+        @@ +------+  현재 SP
+        @@ | 4KB  |
+        @@ +------+ 유저 스페이스 스택 영역의 마지막 주소
+
 		add	sp, sp, #0x10000	@@ sp = sp + 64k ( sp사이즈를 + 64k한다)
+	
+	@@ +------+
+        @@ |      |
+        @@ +------+  현재 SP
+        @@ |64KB  |
+        @@ +------+  이전 SP
+        @@ | 4KB  |
+        @@ +------+ 유저 스페이스 스택 영역의 마지막 주소
+	@@@TODO : 여기까지 함..
+
 		stmfd	sp!, {r0-r3, ip, lr}	@@ *(sp -4) = r0, *(sp - 8) = r1, ... *(sp - 24) = lr, sp -= 24
 		mov	r0, r8			    @@ r0 = atags/device tree pointer
 		mov	r1, r6			    @@ r1 = _edata
@@ -628,6 +689,7 @@ not_relocated:	mov	r0, #0
 		b	__enter_kernel
 #endif
 
+<h1 id='Go_LC0'></h1>
 		.align	2
 		.type	LC0, #object
 LC0:		.word	LC0			@ r1
@@ -1044,8 +1106,8 @@ __armv4_mmu_cache_on:
 						@@   - TLB : Translation Lookaside Buffer
 						@@
 						@@ 참조
-						@@  - http:@@wiki.kldp.org/KoreanDoc/html/EmbeddedKernel-KLDP/arm.mmu.html
-						@@  - http:@@kth3321.blogspot.kr/2013/04/arm-cortex-1.html
+						@@  - <a href="http://wiki.kldp.org/KoreanDoc/html/EmbeddedKernel-KLDP/arm.mmu.html">http://wiki.kldp.org/KoreanDoc/html/EmbeddedKernel-KLDP/arm.mmu.html</a>
+						@@  - <a href="http://kth3321.blogspot.kr/2013/04/arm-cortex-1.html">http://kth3321.blogspot.kr/2013/04/arm-cortex-1.html</a>
 
 		mcrne	p15, 0, r3, c2, c0, 0	@ load page table pointer
 						@@ TTBR0에 r3를 저장.
@@ -1061,7 +1123,7 @@ __armv4_mmu_cache_on:
 #endif
 		mcr	p15, 0, r0, c7, c5, 4	@ ISB......<1>
 						@@ 파이프라인, 캐쉬 플러쉬
-						@@ <a href='http:@@infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0204ik/CIHJFGFE.html'>http:@@infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0204ik/CIHJFGFE.html</a>
+						@@ <a href='http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0204ik/CIHJFGFE.html'>http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0204ik/CIHJFGFE.html</a>
 
 						@@ ISB: Instruction Barrier
 						@@ 위에서 r0를 다음과 같이 설정하였음.
