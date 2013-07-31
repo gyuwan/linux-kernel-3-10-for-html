@@ -2,10 +2,31 @@
 	<head>
 		<title>head.S</title>
 	</head>
-	<body>
-		
-		<script src="../../../../gyuwan/google-code-prettify/src/run_prettify.js"></script>
-		<!--<script src="../../../../gyuwan/google-code-prettify/src/run_prettify.js?skin=sons-of-obsidian"></script>-->
+	<body onload="go()">
+<script>(function () {
+  var sourceBaseUrl = "../../../../gyuwan/google-code-prettify/src/";
+  var sources = [
+      "prettify.js",
+  ];
+  var styles = [
+      "sons-of-obsidian.css"
+  ];
+  if (window.console) {
+    console.log("sourceBaseUrl=" + sourceBaseUrl);
+  }
+  for (var i = 0; i < sources.length; ++i) {
+    document.write(
+        "<script src=\"" + sourceBaseUrl + sources[i] + "\"><\/script>");
+  }
+  for (var i = 0; i < styles.length; ++i) {
+    document.write(
+        "<link rel=\"stylesheet\" href=\"" + sourceBaseUrl + styles[i] + "\">");
+  }
+  document.write("<script src=\"" + sourceBaseUrl + "test_base.js\" type=\"text/javascript\" onerror=\"alert('Error: failed to load ' + this.src)\"><\/script>");
+})();
+</script>
+
+
 		<pre class="prettyprint linenums">
 /*
  *  linux/arch/arm/boot/compressed/head.S
@@ -17,8 +38,8 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-#include <linux/linkage.h>
-#include <asm/assembler.h>
+#include &lt;linux/linkage.h&gt;
+#include &lt;asm/assembler.h&gt;
 
 	.arch	armv7-a
 /*
