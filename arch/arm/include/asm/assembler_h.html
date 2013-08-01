@@ -1,12 +1,18 @@
 <html>
-	<head>
-		<title>assembler.h</title>
-	</head>
-	<body>
-		<script src="../../../../gyuwan/google-code-prettify/src/run_prettify.js"></script>	
-		<!--<script src="../../../../gyuwan/google-code-prettify/src/run_prettify.js?skin=sons-of-obsidian"></script>	-->
-		<pre class="prettyprint linenums">
-
+<head>
+<title>head.S</title>
+</head>
+<body onload="go()">
+<script>(function () {
+ var sourceBaseUrl = "../../../../gyuwan/google-code-prettify/src/";
+ var sources = "prettify.js";
+ var styles = "sons-of-obsidian.css";
+ document.write("<script src=\"" + sourceBaseUrl + "prettify.js\"><\/script>");
+ document.write("<link rel=\"stylesheet\" href=\"" + sourceBaseUrl + "sons-of-obsidian.css\">");
+ document.write("<script src=\"" + sourceBaseUrl + "test_base.js\" type=\"text/javascript\" onerror=\"alert('Error: failed to load ' + this.src)\"><\/script>");
+ })();
+ </script>
+ <pre class="prettyprint linenums">
 /*
  *  arch/arm/include/asm/assembler.h
  *
